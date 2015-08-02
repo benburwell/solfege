@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Submit a new song</title>
+  </head>
+  <body>
+    <h1>Submit a new song</h1>
+    <p>Tell us about the song (all fields required):</p>
+    <form action="/submit_song" method="post">
+      <table>
+        <tr>
+          <td>Title:</td>
+          <td><input type="text" name="title" value="{{title}}"></td>
+        </tr>
+        <tr>
+          <td>Artist:</td>
+          <td><input type="text" name="artist" value="{{artist}}"></td>
+        </tr>
+        <tr>
+          <td>Phrase:</td>
+          <td><input type="text" name="phrase" value="{{phrase}}"></td>
+        </tr>
+        <tr>
+          <td colspan="2"><input type="submit" value="Win at life"></td>
+        </tr>
+      </table>
+    </form>
+  </body>
+</html>

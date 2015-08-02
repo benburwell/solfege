@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Solfege search results - {{original_query}}</title>
+  </head>
+  <body>
+    <!--   Normalized: {{normalized_query}} -->
+    <!-- Denormalized: {{denormalized_query}} -->
+
+    <h1>Solfege search results</h1>
+    <p>
+      <form action="/search" method="get">
+        <input type="text" name="q" value="{{original_query}}">
+        <input type="submit" value="Search">
+      </form>
+    </p>
+
+    <ol>
+      {{#each results}}
+      <li><b>{{title}} - {{artist_name}}</b></li>
+      {{/each}}
+    </ol>
+
+    <h2>None of these right? Remebered the song?</h2>
+    <p>Submit the song this phrase is from!</p>
+    <p>
+      <form action="/submit_song">
+        <input type="hidden" name="phrase" value="{{denormalized_query}}">
+        <input type="text" name="title" placeholder="Song title">
+        <input type="submit" value="Improve the world">
+      </form>
+    </p>
+  </body>
+</html>

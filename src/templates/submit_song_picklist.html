@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Submit a song</title>
+  </head>
+  <body>
+    <h1>Did you mean one of these?</h1>
+    <ol>
+      {{#each songs}}
+      <li><a href="/add_phrase?phrase={{../phrase}}&amp;id={{song_id}}">{{title}} by {{artist_name}}</a></li>
+      {{/each}}
+    </ol>
+    <a href="/submit_song?phrase={{phrase}}&amp;title={{title}}&amp;new=1">Nope, it's none of these</a>
+  </body>
+</html>
