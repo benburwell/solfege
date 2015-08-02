@@ -1,7 +1,4 @@
-var fs = require('fs');
-
 module.exports = {
-
   // Take some solfege input and normalize it
   normalize: function(str) {
     var tokens = str.toLowerCase().split(/\s+/);
@@ -80,27 +77,5 @@ module.exports = {
     }
 
     return ret.trim();
-  },
-
-  // Initialize the SQL database
-  initializeDatabase: function(db, done) {
-
-    // Fetch the SQL we need to run
-    fs.readFile('../db/schema.sql', function(err, sql) {
-      if (err) {
-        return console.error('Error reading SQL from file', err);
-      }
-
-      // Execute the query
-      db.query(sql, function(err, result) {
-        
-        if (err) {
-          console.error('Error executing SQL query', err);
-        }
-
-        // Run the callback
-        done();
-      });
-    });
   }
 };

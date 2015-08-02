@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Solfege search</title>
+  </head>
+  <body>
+    <header>
+      <h1>Solfege search</h1>
+    </header>
+    <main>
+      <p>Enter some movable-do solfege syllables to search for:</p>
+      <p>
+        <form action="/search" method="get">
+          <input type="text" autofocus name="q">
+          <input type="submit" value="Search">
+        </form>
+      </p>
+      <p>The search engine will recognize different forms, such as ti and si, and will understand both <kbd>+</kbd> and <kbd>#</kbd> as sharp, and <kbd>-</kbd> and <kbd>b</kbd> as flat.</p>
+      <!-- ♯♭ -->
+    </main>
+    <footer>
+      <p>By <a href="https://www.benburwell.com/">Ben Burwell</a> | <a href="https://github.com/benburwell/solfege">GitHub</a> | &copy; 2015</p>
+    </footer>
+  </body>
+</html>
