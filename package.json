@@ -1,0 +1,21 @@
+{
+  "name": "solfege",
+  "version": "0.0.1",
+  "description": "A solfege database",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha -u tdd --reporter spec"
+  },
+  "keywords": [
+    "solfege"
+  ],
+  "author": "Ben Burwell <ben@benburwell.com>",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^4.4.1"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5",
+    "should": "^7.0.2"
+  }
+}
