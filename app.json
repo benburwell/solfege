@@ -1,5 +1,8 @@
 {
   "addons": [
     "heroku-postgresql:hobby-dev"
-  ]
+  ],
+  "scripts": {
+    "postdeploy": "node db/bootstrap.js"
+  }
 }
