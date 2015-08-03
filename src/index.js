@@ -4,6 +4,7 @@ var path = require('path');
 
 // require external libs
 var Hapi = require('hapi');
+var pg = require('pg');
 
 // require custom libs
 var utils = require('./utils');
@@ -14,6 +15,8 @@ server.connection({
   port: process.env.PORT || 8000
 });
 
+server.app.DB_URI = process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1/solfege';
+
 server.views({
   engines: {
     html: require('handlebars')
@@ -21,82 +24,67 @@ server.views({
   path: path.join(__dirname, 'templates')
 });
 
-server.register({
-  register: require('hapi-postgres'),
-  options: {
-    uri: process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1/solfege'
-  }
-}, function(err) {
-  if (err) {
-    console.error('Failed to load hapi-postgres', err);
-  }
-});
-
 server.method('search', function(query, next) {
-  var client = server.plugins['hapi-postgres'].client;
-  var done = server.plugins['hapi-postgres'].done;
+  return pg.connect(server.app.DB_URI, function(err, client, done) {
+    var norm = utils.normalize(query);
 
-  var norm = utils.normalize(query);
+    var sql = 'SELECT title, artist_name FROM songs JOIN phrase_song ON (songs.song_id = phrase_song.song_id) WHERE phrase_song.phrase_id IN (SELECT phrase_id FROM phrases WHERE solfege LIKE \'%' + norm + '%\') GROUP BY songs.song_id;';
+    client.query(sql, function(err, results) {
+      done();
 
-  var sql = 'SELECT title, artist_name FROM songs JOIN phrase_song ON (songs.song_id = phrase_song.song_id) WHERE phrase_song.phrase_id IN (SELECT phrase_id FROM phrases WHERE solfege LIKE \'%' + norm + '%\') GROUP BY songs.song_id;';
-  return client.query(sql, function(err, results) {
-    done();
-
-    if (err) {
-      next(err);
-    } else {
-      next(null, results.rows);
-    }
+      if (err) {
+        next(err);
+      } else {
+        next(null, results.rows);
+      }
+    });
   });
 });
 
 server.method('getSongsWithSimilarTitle', function(title, next) {
-  var client = server.plugins['hapi-postgres'].client;
-  var done = server.plugins['hapi-postgres'].done;
-
-  var sql = 'SELECT song_id, title, artist_name FROM songs WHERE title @@ plainto_tsquery(\'' + title + '\');';
-  return client.query(sql, function(err, results) {
-    done();
-    if (err) {
-      next(err);
-    } else {
-      next(null, results.rows);
-    }
+  return pg.connect(server.app.DB_URI, function(err, client, done) {
+    var sql = 'SELECT song_id, title, artist_name FROM songs WHERE title @@ plainto_tsquery(\'' + title + '\');';
+    client.query(sql, function(err, results) {
+      done();
+      if (err) {
+        next(err);
+      } else {
+        next(null, results.rows);
+      }
+    });
   });
 });
 
 server.method('addSongWithPhrase', function(options, next) {
-  var client = server.plugins['hapi-postgres'].client;
-  var done = server.plugins['hapi-postgres'].done;
-
   if (!options.title || !options.artist_name || !options.solfege) {
-    done();
     return next(new Error('Missing required title, artist_name, or solfege'));
   }
 
   options.solfege = utils.normalize(options.solfege);
-  var sql = 'INSERT INTO songs (title, artist_name) VALUES (\'' + options.title + '\', \'' + options.artist_name + '\'); INSERT INTO phrases (solfege) VALUES (\'' + options.solfege + '\'); INSERT INTO phrase_song (song_id, phrase_id) VALUES ((SELECT CURRVAL(\'songs_song_id_seq\')), (SELECT CURRVAL(\'phrases_phrase_id_seq\')));';
-  return client.query(sql, function(err, results) {
-    done();
-    if (err) {
-      next(err);
-    } else {
-      next(null);
-    }
+
+  return pg.connect(server.app.DB_URI, function(err, client, done) {
+    var sql = 'INSERT INTO songs (title, artist_name) VALUES (\'' + options.title + '\', \'' + options.artist_name + '\'); INSERT INTO phrases (solfege) VALUES (\'' + options.solfege + '\'); INSERT INTO phrase_song (song_id, phrase_id) VALUES ((SELECT CURRVAL(\'songs_song_id_seq\')), (SELECT CURRVAL(\'phrases_phrase_id_seq\')));';
+    client.query(sql, function(err, results) {
+      done();
+      if (err) {
+        next(err);
+      } else {
+        next(null);
+      }
+    });
   });
 });
 
 server.method('addPhraseToSong', function(options, next) {
-  var client = server.plugins['hapi-postgres'].client;
-  var done = server.plugins['hapi-postgres'].done;
-
   if (!options.song_id || !options.phrase) {
-    done();
     return next(new Error('Missing required song_id or phrase'));
-  } else {
-    var solfege = utils.normalize(options.phrase);
+  }
+
+  var solfege = utils.normalize(options.phrase);
+
+  return pg.connect(server.app.DB_URI, function(err, client, done) {
     var sql = 'INSERT INTO phrases (solfege) VALUES (\'' + solfege + '\'); INSERT INTO phrase_song (song_id, phrase_id) VALUES (' + options.song_id + ', (SELECT phrase_id FROM phrases WHERE solfege=\'' + solfege + '\'));';
-    return client.query(sql, function(err, results) {
+    client.query(sql, function(err, results) {
       done();
 
       if (err) {
@@ -105,7 +93,7 @@ server.method('addPhraseToSong', function(options, next) {
         next(null);
       }
     });
-  }
+  });
 });
 
 // search results
