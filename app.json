@@ -3,6 +3,6 @@
     "heroku-postgresql:hobby-dev"
   ],
   "scripts": {
-    "postdeploy": "node db/bootstrap.js"
+    "postdeploy": "npm install pg; node db/bootstrap.js"
   }
 }
