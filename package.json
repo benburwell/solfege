@@ -15,7 +15,7 @@
   "dependencies": {
     "handlebars": "^3.0.3",
     "hapi": "^8.8.1",
-    "hapi-postgres": "^1.0.2"
+    "pg": "^4.4.1"
   },
   "devDependencies": {
     "mocha": "^2.2.5",
