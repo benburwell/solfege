@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "mocha": "^2.2.5",
+    "request": "^2.60.0",
     "should": "^7.0.2"
   }
 }
