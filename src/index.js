@@ -190,6 +190,10 @@ server.route({
   }
 });
 
-server.start(function() {
-  console.log('Server running!');
-});
+if (!module.parent) {
+  server.start(function() {
+    console.log('Server running!');
+  });
+}
+
+module.exports = server;
