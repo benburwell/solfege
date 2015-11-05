@@ -15,11 +15,13 @@
   "dependencies": {
     "handlebars": "^3.0.3",
     "hapi": "^8.8.1",
-    "pg": "^4.4.1"
+    "pg": "^4.4.1",
+    "q": "^1.4.1"
   },
   "devDependencies": {
     "mocha": "^2.2.5",
     "request": "^2.60.0",
+    "sandboxed-module": "^2.0.2",
     "should": "^7.0.2"
   }
 }

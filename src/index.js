@@ -4,10 +4,11 @@ var path = require('path');
 
 // require external libs
 var Hapi = require('hapi');
-var pg = require('pg');
+var Q = require('q');
 
 // require custom libs
 var utils = require('./utils');
+var Squeuel = require('./squeuel');
 
 var server = new Hapi.Server();
 server.connection({
@@ -16,6 +17,7 @@ server.connection({
 });
 
 server.app.DB_URI = process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1/solfege';
+server.app.query = new Squeuel(server.app.DB_URI).query;
 
 server.views({
   engines: {
@@ -25,34 +27,37 @@ server.views({
 });
 
 server.method('search', function(query, next) {
-  return pg.connect(server.app.DB_URI, function(err, client, done) {
-    var norm = utils.normalize(query);
+  var norm = utils.normalize(query);
+  var sql = 'SELECT title, artist_name '
+    + 'FROM songs '
+    + 'JOIN phrase_song ON (songs.song_id = phrase_song.song_id) '
+    + 'WHERE phrase_song.phrase_id IN '
+      + '(SELECT phrase_id FROM phrases WHERE solfege LIKE $1) '
+    + 'GROUP BY songs.song_id;';
 
-    var sql = 'SELECT title, artist_name FROM songs JOIN phrase_song ON (songs.song_id = phrase_song.song_id) WHERE phrase_song.phrase_id IN (SELECT phrase_id FROM phrases WHERE solfege LIKE \'%' + norm + '%\') GROUP BY songs.song_id;';
-    client.query(sql, function(err, results) {
-      done();
-
-      if (err) {
-        next(err);
-      } else {
-        next(null, results.rows);
-      }
-    });
-  });
+  server.app.query(sql, [ '%' + norm + '%'])
+    .then(function(results) {
+      next(null, results.rows);
+    })
+    .catch(function(err) {
+      next(err)
+    })
+    .done();
 });
 
 server.method('getSongsWithSimilarTitle', function(title, next) {
-  return pg.connect(server.app.DB_URI, function(err, client, done) {
-    var sql = 'SELECT song_id, title, artist_name FROM songs WHERE title @@ plainto_tsquery(\'' + title + '\');';
-    client.query(sql, function(err, results) {
-      done();
-      if (err) {
-        next(err);
-      } else {
-        next(null, results.rows);
-      }
-    });
-  });
+  var sql = 'SELECT song_id, title, artist_name '
+    + 'FROM songs '
+    + 'WHERE title @@ plainto_tsquery($1);';
+
+  server.app.query(sql, [ title ])
+    .then(function(results) {
+      next(null, results);
+    })
+    .catch(function(err) {
+      next(err);
+    })
+    .done();
 });
 
 server.method('addSongWithPhrase', function(options, next) {
@@ -60,19 +65,30 @@ server.method('addSongWithPhrase', function(options, next) {
     return next(new Error('Missing required title, artist_name, or solfege'));
   }
 
-  options.solfege = utils.normalize(options.solfege);
+  var solfege = utils.normalize(options.solfege);
+  var song_id = null;
+  var phrase_id = null;
 
-  return pg.connect(server.app.DB_URI, function(err, client, done) {
-    var sql = 'INSERT INTO songs (title, artist_name) VALUES (\'' + options.title + '\', \'' + options.artist_name + '\'); INSERT INTO phrases (solfege) VALUES (\'' + options.solfege + '\'); INSERT INTO phrase_song (song_id, phrase_id) VALUES ((SELECT CURRVAL(\'songs_song_id_seq\')), (SELECT CURRVAL(\'phrases_phrase_id_seq\')));';
-    client.query(sql, function(err, results) {
-      done();
-      if (err) {
-        next(err);
-      } else {
-        next(null);
-      }
-    });
-  });
+  server.app.query('BEGIN;')
+    .then(server.app.query('INSERT INTO songs (title, artist_name) VALUES ($1, $2) RETURNING song_id;', [
+      options.title,
+      options.artist_name
+    ]))
+    .then(function(results) {
+      console.log('r1', results);
+      song_id = results.rows[0];
+    })
+    .then(server.app.query('INSERT INTO phrases (solfege) VALUES ($1) RETURNING phrase_id;', [ solfege ]))
+    .then(function(results) {
+      console.log('r2', results);
+      phrase_id = results.rows[0];
+    })
+    .then(server.app.query('INSERT INTO phrase_song (phrase_id, song_id) VALUES ($1, $2);', [ phrase_id, song_id ]))
+    .then(server.app.query('COMMIT;'))
+    .catch(function(err) {
+      console.error(err);
+    })
+    .done();
 });
 
 server.method('addPhraseToSong', function(options, next) {
@@ -81,19 +97,16 @@ server.method('addPhraseToSong', function(options, next) {
   }
 
   var solfege = utils.normalize(options.phrase);
-
-  return pg.connect(server.app.DB_URI, function(err, client, done) {
-    var sql = 'INSERT INTO phrases (solfege) VALUES (\'' + solfege + '\'); INSERT INTO phrase_song (song_id, phrase_id) VALUES (' + options.song_id + ', (SELECT phrase_id FROM phrases WHERE solfege=\'' + solfege + '\'));';
-    client.query(sql, function(err, results) {
-      done();
-
-      if (err) {
-        next(new Error('Error adding phrase to song'));
-      } else {
-        next(null);
-      }
-    });
-  });
+  var sql = 'INSERT INTO phrase_song (song_id, phrase_id) '
+    + 'VALUES ($2, (SELECT phrase_id FROM phrases WHERE solfege=$3));';
+  
+  server.app.query('INSERT INTO phrases (solfege) VALUES ($1);', [ solfege ])
+    .then(server.app.query(sql, [ options.song_id, solfege ]))
+    .then(function(result) {
+      next(null);
+    })
+    .catch(next)
+    .done();
 });
 
 // search results
